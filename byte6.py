@@ -40,18 +40,64 @@ except IOError:
     fp = open("data/cats.json", "w+")
     json.dump(cats, fp)
 
+outcome_types = ['Returned to Owner', 'Transferred to Rescue Group', 'Adopted', 'Foster', 'Euthanized']
+outcome_labels = ['Owner', 'Rescue Group', 'Adopted', 'Foster', 'Euthanized', 'Other']
+
+# cat_outcomes = np.array([0.0,0,0,0,0,0])
+# dog_outcomes = np.array([0.0,0,0,0,0,0])
+#
+# # loop through all of the rows of data
+# rows = dogs['rows'] # the actual data
+#
+# for dog in rows:
+#     # get the outcome for this dog
+#     outcome = dog[13]
+#     try:
+#         i = outcome_types.index(outcome)
+#         # one of outcome_types
+#         dog_outcomes[i] = dog_outcomes[i] + 1
+#     except ValueError:
+#         # everything else
+#         dog_outcomes[5] = dog_outcomes[5] + 1
+# rows = cats['rows'] # the actual data
+# for cat in rows:
+#     # get the outcome for this cat
+#     outcome = cat[13]
+#     try:
+#         i = outcome_types.index(outcome)
+#         # one of outcome_types
+#         cat_outcomes[i] = cat_outcomes[i] + 1
+#     except ValueError:
+#         # everything else
+#         cat_outcomes[5] = cat_outcomes[5] + 1
+#
+# print "cat_outcomes", cat_outcomes
+# print "dog_outcomes",  dog_outcomes
+#
+# Observed = np.array([cat_outcomes, dog_outcomes])
+#
+# X_2, p, dof, expected= scipy.stats.chi2_contingency(Observed)
+# print "CHI-squared: ", X_2, "p = ", p
+
 rows = dogs['rows']  # the actual data
 
 ages = ["Infant - Younger than 6 months", "Youth - Younger than 1 year",
-        "Older than 1 year", "Older than 7 years", "Other"]
-
+        "Older than 1 year", "Older than 7 years", "Unknown"]
 outcomes = ["Returned to Owner", "Transferred to Rescue Group", "Adopted",
             "Foster", "Euthanized", "Other"]
 sort_outs = ["Home", "Euthanized", "Other"]
 
-data = [('Home',        np.array([0.0,0,0,0,0])),
-        ('Euthanized',  np.array([0.0,0,0,0,0])),
-        ('Other',       np.array([0.0,0,0,0,0]))]
+data = [('Infant - Younger than 6 months',  np.array([0.0,0,0])),
+        ('Youth - Younger than 1 year',     np.array([0.0,0,0])),
+        ('Older than 1 year',               np.array([0.0,0,0])),
+        ('Older than 7 years',              np.array([0.0,0,0])),
+        ('Other',                           np.array([0.0,0,0]))]
+
+data_all = [('Infant - Younger than 6 months',  np.array([0.0,0,0,0,0,0])),
+        ('Youth - Younger than 1 year',         np.array([0.0,0,0,0,0,0])),
+        ('Older than 1 year',                   np.array([0.0,0,0,0,0,0])),
+        ('Older than 7 years',                  np.array([0.0,0,0,0,0,0])),
+        ('Other',                               np.array([0.0,0,0,0,0,0]))]
 
 # imp = Imputer(missing_values='NaN', strategy='mean', axis=0)
 # imp.transform(rows)
@@ -71,47 +117,71 @@ def classify_dog(o,j):
     except:
         a = 4 # Unknown ages classified as "other"
 
-    data[o][1][a] += 1 # Another placed doggie
+    data[a][1][o] += 1 # Another placed doggie
+
+def classify_dog_all(o,j):
+    try:
+        o = outcomes.index(o)
+    except:
+        o = 5 # And of course if it is not found... 'other'
+
+    try:
+        a = ages.index(j)
+    except:
+        a = 4 # Unknown ages classified as "other"
+
+    data_all[a][1][o] += 1 # Another placed doggie
 
 for dog in rows:
     age = dog[7]
     outcome = dog[13]
 
     classify_dog(outcome,age)
+    classify_dog_all(outcome,age)
+
+Observed = np.array([data_all[0][1], data_all[1][1], data_all[2][1],
+                     data_all[3][1], data_all[4][1]])
+print Observed
+
+X_2, p, dof, expected= scipy.stats.chi2_contingency(Observed)
+print "CHI-squared: ", X_2, "p = ", p
+
+# [[   60.   340.   468.   111.   115.    49.]
+#  [  108.   257.   376.    21.   125.    28.]
+#  [  744.   967.  1142.    78.   763.   100.]
+#  [  286.   230.    60.    18.   626.    30.]
+#  [  376.   625.    74.    29.  1129.   300.]]
+# CHI-squared:  2499.71398573 p =  0.0
 
 # plot the data to see what it looks like
 fig, ax = plt.subplots()
-index = np.arange(5)
+index = np.arange(3)
 bar_width = 0.15
 opacity = 0.4
 
 rects1 = plt.bar(index,
                  data[0][1], bar_width, alpha=opacity,
-                 color='b', label="Home")
+                 color='b', label="Infant")
 rects2 = plt.bar(index+bar_width,
                  data[1][1], bar_width,
-                 alpha=opacity, color='r', label='Euth.')
+                 alpha=opacity, color='r', label='Youth')
 rects3 = plt.bar(index+(bar_width*2),
                  data[2][1], bar_width,
-                 alpha=opacity, color='g', label='Other')
+                 alpha=opacity, color='g', label='Adolescent')
+rects4 = plt.bar(index+(bar_width*3),
+                 data[3][1], bar_width,
+                 alpha=opacity, color='purple', label='Senior')
+rects5 = plt.bar(index+(bar_width*4),
+                 data[4][1], bar_width,
+                 alpha=opacity, color='orange', label='Unknown')
 
-plt.ylabel('Number')
-plt.title('Number of dogs by age and adoption outcome')
-plt.xticks(index + (bar_width), ages)
-plt.legend()
-plt.tight_layout()
-plt.ticklabel_format(labelsize='small')
-plt.show()
-
-Observed = np.array([data[0][1], data[1][1], data[2][1]])
-
-X_2, p, dof, expected= scipy.stats.chi2_contingency(Observed)
-print "CHI-squared: ", X_2, "p = ", p
-
-########################################
-# CHI-squared:  1457.32389168 p =  2.27695285736e-309
-########################################
-
+# plt.ylabel('Number')
+# plt.title('Number of dogs by age and adoption outcome')
+# plt.xticks(index + (bar_width), sort_outs)
+# plt.legend()
+# plt.tight_layout()
+# plt.ticklabel_format(labelsize='small')
+# plt.show()
 
 try:
     fp = open("data/random_dogs_and_cats.json")
@@ -163,8 +233,8 @@ y[y=="Died"] = "Other"
 y[y=="Disposal"] = "Other"
 y[y=="Missing"] = "Other"
 y[y=="Trap Neuter/Spay Released"] = "Other"
-y[y=="Transferred to Rescue Group"] = "Other"
-y[y==u'Foster']="Other"
+y[y=="Transferred to Rescue Group"] = "Home"
+y[y==u'Foster']="Home"
 
 
 y[y=="Returned to Owner"] = "Home"
@@ -247,17 +317,17 @@ for train, test in skf:
     clf = clf.fit(X_train, y_train)
 
     # test the classifiers
-    dc_pred = dc.predict(X_test)
-    gnb_pred = gnb.predict(X_test)
-    clf_pred = clf.predict(X_test)
+    dc_pred = dc.predict(X_rest)
+    gnb_pred = gnb.predict(X_rest)
+    clf_pred = clf.predict(X_rest)
 
     # calculate metrics relating how well they did
-    dc_accuracy = metrics.accuracy_score(y_test, dc_pred)
-    dc_precision, dc_recall, dc_f, dc_support = metrics.precision_recall_fscore_support(y_test, dc_pred)
-    gnb_accuracy = metrics.accuracy_score(y_test, gnb_pred)
-    gnb_precision, gnb_recall, gnb_f, gnb_support = metrics.precision_recall_fscore_support(y_test, gnb_pred)
-    clf_accuracy = metrics.accuracy_score(y_test, clf_pred)
-    clf_precision, clf_recall, clf_f, clf_support = metrics.precision_recall_fscore_support(y_test, clf_pred)
+    dc_accuracy = metrics.accuracy_score(y_rest, dc_pred)
+    dc_precision, dc_recall, dc_f, dc_support = metrics.precision_recall_fscore_support(y_rest, dc_pred)
+    gnb_accuracy = metrics.accuracy_score(y_rest, gnb_pred)
+    gnb_precision, gnb_recall, gnb_f, gnb_support = metrics.precision_recall_fscore_support(y_rest, gnb_pred)
+    clf_accuracy = metrics.accuracy_score(y_rest, clf_pred)
+    clf_precision, clf_recall, clf_f, clf_support = metrics.precision_recall_fscore_support(y_rest, clf_pred)
 
     # print the results for this fold
     print "----- Accuracy -----"
